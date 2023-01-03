@@ -1,11 +1,15 @@
+using MusicDownloaderAPI.MinIO;
 using MusicDownloaderAPI.Rabbit;
+using MusicDownloaderAPI.VideoDownload;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
-builder.Services.AddScoped<IRabbitMqService, RabbitMqService>();
+builder.Services.AddSingleton<IMinIOProvider, MinIOProvider>();
+builder.Services.AddSingleton<IDownloader, Downloader>();
+builder.Services.AddSingleton<IDownloadQueue, DownloadQueue>();
 
 var app = builder.Build();
 
