@@ -1,6 +1,4 @@
-﻿
-
-using Minio.Exceptions;
+﻿using Minio.Exceptions;
 using Minio;
 
 namespace MusicDownloaderAPI.MinIO
@@ -8,48 +6,60 @@ namespace MusicDownloaderAPI.MinIO
     public class MinIOProvider : IMinIOProvider
     {
         private readonly MinioClient _minioClient;
-        private readonly string endpoint = "minio:9000";
-        private readonly string accessKey = "jibajibajibajiba";
-        private readonly string secretKey = "urusurusurus";
-        private readonly string bucketName = "music";
+        private readonly string _endpoint;
+        private readonly string _accessKey;
+        private readonly string _secretKey;
+        private readonly string _nginxEndpoint;
+        private readonly string _bucketName = "music";
 
-        public MinIOProvider() 
+        public MinIOProvider()
         {
+            string? endpoint = Environment.GetEnvironmentVariable("MINIO_ENDPOINT");
+            string? accessKey = Environment.GetEnvironmentVariable("MINIO_ROOT_USER");
+            string? secretKey = Environment.GetEnvironmentVariable("MINIO_ROOT_PASSWORD");
+            string? nginxEndpoint = Environment.GetEnvironmentVariable("MINIO_NGINX_ENDPOINT");
+
+            if (endpoint is null || accessKey is null 
+                || secretKey is null || nginxEndpoint is null)
+            {
+                throw new Exception("Environment not specified");
+            }
+
+            _endpoint = endpoint;
+            _accessKey = accessKey;
+            _secretKey = secretKey;
+            _nginxEndpoint = nginxEndpoint;
             _minioClient = new MinioClient()
-                .WithEndpoint(endpoint)
-                .WithCredentials(accessKey, secretKey)
+                .WithEndpoint(_endpoint)
+                .WithCredentials(_accessKey, _secretKey)
                 .Build();
         }
 
-        public async void UploadFile(Stream stream, string fileName)
+        public void UploadFile(Stream stream, string fileName)
         {
             var bucketName = "music";
             var contentType = "binary/octet-stream";
 
             try
             {
-                // Make a bucket on the server, if not already present.
                 var beArgs = new BucketExistsArgs()
                     .WithBucket(bucketName);
-                bool found = await _minioClient.BucketExistsAsync(beArgs).ConfigureAwait(false);
+                bool found = _minioClient.BucketExistsAsync(beArgs).Result;
                 if (!found)
                 {
                     var mbArgs = new MakeBucketArgs()
                         .WithBucket(bucketName);
-                    await _minioClient.MakeBucketAsync(mbArgs).ConfigureAwait(false);
+                    _minioClient.MakeBucketAsync(mbArgs).Wait();
                 }
-                // Upload a file to bucket.
-                using (var filestream = stream)
-                {
-                    var putObjectArgs = new PutObjectArgs()
-                        .WithBucket(bucketName)
-                        .WithObject(fileName)
-                        .WithStreamData(filestream)
-                        .WithObjectSize(filestream.Length)
-                        .WithContentType(contentType);
+                using var filestream = stream;
+                var putObjectArgs = new PutObjectArgs()
+                    .WithBucket(bucketName)
+                    .WithObject(fileName)
+                    .WithStreamData(filestream)
+                    .WithObjectSize(filestream.Length)
+                    .WithContentType(contentType);
 
-                    await _minioClient.PutObjectAsync(putObjectArgs).ConfigureAwait(false);
-                }
+                _minioClient.PutObjectAsync(putObjectArgs).Wait();
             }
             catch (MinioException e)
             {
@@ -57,13 +67,14 @@ namespace MusicDownloaderAPI.MinIO
             }
         }
 
-        public string GetDownloadLink(string filename) 
+        public string GetDownloadLink(string filename)
         {
             var argss = new PresignedGetObjectArgs()
-                .WithBucket(bucketName)
+                .WithBucket(_bucketName)
                 .WithObject(filename)
                 .WithExpiry(60 * 60);
-            string url = _minioClient.PresignedGetObjectAsync(argss).Result;
+            string url = _minioClient.PresignedGetObjectAsync(argss).Result
+                .Replace(_endpoint, _nginxEndpoint);
             return url;
         }
     }
