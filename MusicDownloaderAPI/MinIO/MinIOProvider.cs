@@ -8,7 +8,7 @@ namespace MusicDownloaderAPI.MinIO
     public class MinIOProvider : IMinIOProvider
     {
         private readonly MinioClient _minioClient;
-        private readonly string endpoint = "localhost:9000";
+        private readonly string endpoint = "minio:9000";
         private readonly string accessKey = "jibajibajibajiba";
         private readonly string secretKey = "urusurusurus";
         private readonly string bucketName = "music";
