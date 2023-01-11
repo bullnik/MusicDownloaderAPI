@@ -13,7 +13,25 @@ namespace MusicDownloaderAPI.VideoDownload
             _minIOProvider = minIOProvider;
         }
 
-        public string Download(string link)
+        public Task<string> DownloadAsync(string link)
+        {
+            Task<string> task = new(() =>
+            {
+                try
+                {
+                    return Download(link);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                    return "";
+                }
+            });
+            task.Start();
+            return task;
+        }
+
+        private string Download(string link)
         {
             var youtube = new YoutubeClient();
             var task = youtube.Videos.Streams.GetManifestAsync(link);

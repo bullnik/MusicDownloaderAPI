@@ -1,5 +1,5 @@
+using MusicDownloadASPNET.Rabbit;
 using MusicDownloaderAPI.MinIO;
-using MusicDownloaderAPI.Rabbit;
 using MusicDownloaderAPI.VideoDownload;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -7,10 +7,10 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
+builder.Services.AddSingleton<IRabbitMqService, RabbitMqService>();
 builder.Services.AddSingleton<IMinIOProvider, MinIOProvider>();
 builder.Services.AddSingleton<IDownloader, Downloader>();
-builder.Services.AddSingleton<IDownloadQueue, DownloadQueue>();
-
+builder.Services.AddHostedService<DownloadQueue>();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
